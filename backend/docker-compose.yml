@@ -1,0 +1,103 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.5
+    container_name: farmjumnoy-postgres
+    environment:
+      POSTGRES_USER: farmjumnoy
+      POSTGRES_PASSWORD: farmjumnoy
+      POSTGRES_DB: farmjumnoy
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./prisma/migrations/000001_init/migration.sql:/docker-entrypoint-initdb.d/000001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U farmjumnoy -d farmjumnoy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: farmjumnoy-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: farmjumnoy-meilisearch
+    environment:
+      MEILI_MASTER_KEY: dev-master-key
+      MEILI_NO_ANALYTICS: "true"
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili-data:/meili_data
+
+  qdrant:
+    image: qdrant/qdrant:v1.10.1
+    container_name: farmjumnoy-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: farmjumnoy-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb -p local/farmjumnoy-dev || true;
+      mc anonymous set download local/farmjumnoy-dev || true;
+      "
+
+  api:
+    build:
+      context: .
+      target: runner
+    container_name: farmjumnoy-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://farmjumnoy:farmjumnoy@postgres:5432/farmjumnoy?schema=public
+      REDIS_HOST: redis
+      MEILI_HOST: http://meilisearch:7700
+      QDRANT_URL: http://qdrant:6333
+      S3_ENDPOINT: http://minio:9000
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      meilisearch:
+        condition: service_started
+      qdrant:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  redis-data:
+  meili-data:
+  qdrant-data:
+  minio-data:

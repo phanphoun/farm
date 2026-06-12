@@ -1,0 +1,55 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "search": "Search",
+    "noData": "No data",
+    "viewAll": "View all"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "name": "Full Name",
+    "phone": "Phone Number",
+    "role": "Role"
+  },
+  "nav": {
+    "home": "Home",
+    "marketplace": "Market",
+    "ai": "AI",
+    "learn": "Learn",
+    "chat": "Chat"
+  },
+  "feed": {
+    "whatThinking": "What are you thinking?",
+    "post": "Post",
+    "like": "Like",
+    "comment": "Comment",
+    "share": "Share"
+  },
+  "marketplace": {
+    "title": "Marketplace",
+    "cart": "Cart",
+    "checkout": "Checkout",
+    "addToCart": "Add to Cart",
+    "buyNow": "Buy Now"
+  },
+  "farm": {
+    "dashboard": "Farm Dashboard",
+    "map": "Map",
+    "tasks": "Tasks",
+    "finance": "Finance",
+    "crops": "Crops"
+  },
+  "ai": {
+    "title": "AI Assistant",
+    "placeholder": "Ask a farming question...",
+    "uploadImage": "Upload Image"
+  }
+}
