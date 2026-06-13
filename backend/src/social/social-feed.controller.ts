@@ -11,7 +11,11 @@ export class FeedController {
   constructor(private readonly socialService: SocialService) {}
 
   @Get()
-  feed(@CurrentUser() user: AuthenticatedUser, @Query('take') take = 20, @Query('skip') skip = 0) {
-    return this.socialService.feed(user.id, Number(take), Number(skip));
+  feed(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ) {
+    return this.socialService.feed(user.id, Number(page), Number(limit));
   }
 }

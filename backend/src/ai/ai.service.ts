@@ -77,12 +77,22 @@ export class AiService {
     });
 
     const context = await this.retrieve(dto.message, language);
-    const answer = await this.generateAnswer({
-      question: dto.message,
-      language,
-      context,
-      farmContext: dto.farmContext ?? (conversation.farmContext as Record<string, unknown>)
-    });
+    let answer: { content: string; provider: AiProvider; model: string };
+    try {
+      answer = await this.generateAnswer({
+        question: dto.message,
+        language,
+        context,
+        farmContext: dto.farmContext ?? (conversation.farmContext as Record<string, unknown>)
+      });
+    } catch (err) {
+      this.logger.error(`AI generateAnswer failed: ${(err as Error).message}`);
+      answer = {
+        content: 'សូមទោស ខ្ញុំមិនអាចឆ្លើយបានឥឡូវនេះ។ សូមពិនិត្យការកំណត់ AI API key ហើយព្យាយាមម្តងទៀត។',
+        provider: AiProvider.OPENAI,
+        model: 'fallback'
+      };
+    }
 
     const assistantMessage = await this.prisma.aiMessage.create({
       data: {
@@ -310,9 +320,13 @@ export class AiService {
     }
 
     if (provider === 'gemini' && this.gemini) {
-      const model = this.gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      const response = await model.generateContent(prompt);
-      return { content: response.response.text(), provider: AiProvider.GEMINI, model: 'gemini-1.5-flash' };
+      try {
+        const model = this.gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const response = await model.generateContent(prompt);
+        return { content: response.response.text(), provider: AiProvider.GEMINI, model: 'gemini-1.5-flash' };
+      } catch (err) {
+        this.logger.warn(`Gemini failed: ${(err as Error).message}. Falling back.`);
+      }
     }
 
     if (this.openai) {

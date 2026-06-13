@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -262,7 +262,7 @@ model User {
   email           String?     @unique
   phone           String?     @unique
   passwordHash    String
-  displayName     String
+  displayName     String?
   firstName       String?
   lastName        String?
   avatarUrl       String?
@@ -634,7 +634,8 @@ model Product {
   price         Decimal       @db.Decimal(12, 2)
   currency      String        @default("KHR")
   stockQuantity Int           @default(0)
-  unit          String?
+  unit          String
+  minOrderQty   Int           @default(1)
   images        Json          @default("[]")
   tags          Json          @default("[]")
   status        ProductStatus @default(DRAFT)
@@ -724,6 +725,7 @@ model OrderItem {
   productId String
   vendorId  String
   quantity  Int
+  unit      String
   unitPrice Decimal  @db.Decimal(12, 2)
   total     Decimal  @db.Decimal(12, 2)
   snapshot  Json     @default("{}")

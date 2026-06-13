@@ -49,6 +49,12 @@ export class PostsController {
     return this.socialService.reactToPost(user.id, id, dto);
   }
 
+  /** Convenience alias used by the mobile frontend */
+  @Post(':id/like')
+  like(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.socialService.toggleLike(user.id, id);
+  }
+
   @Delete(':id/reactions')
   unreact(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.socialService.removePostReactions(user.id, id);

@@ -1,5 +1,8 @@
 import 'reflect-metadata';
 import compression from 'compression';
+import { join } from 'node:path';
+import { mkdirSync } from 'node:fs';
+import express from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
@@ -41,6 +44,12 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
+
+  // Serve uploaded files statically
+  const uploadsDir = join(process.cwd(), 'uploads');
+  mkdirSync(uploadsDir, { recursive: true });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (app as any).use('/uploads', express.static(uploadsDir));
 
   const port = Number(process.env.PORT ?? 4001);
   await app.listen(port, '0.0.0.0');

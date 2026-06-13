@@ -1,32 +1,29 @@
 import api from "./api";
-import type { User, AuthState } from "@/types";
+import type { User } from "@/types";
 
 export async function login(
-  email: string,
+  identifier: string,
   password: string
-): Promise<{ user: User; token: string }> {
-  const { data } = await api.post("/auth/login", { email, password });
-  return data;
+): Promise<{ user: User; token: string; refreshToken: string }> {
+  const { data } = await api.post("/auth/login", { identifier, password });
+  return { user: data.user, token: data.accessToken, refreshToken: data.refreshToken };
 }
 
-export async function register(
-  payload: {
-    name: string;
-    email: string;
-    password: string;
-    phone?: string;
-    role: string;
-  }
-): Promise<{ user: User; token: string }> {
-  const normalizedRole = String(payload.role || "").trim().toUpperCase();
+export async function register(payload: {
+  name: string;
+  email?: string;
+  password: string;
+  phone?: string;
+  role: string;
+}): Promise<{ user: User; token: string; refreshToken: string }> {
   const { data } = await api.post("/auth/register", {
     displayName: payload.name,
-    email: payload.email,
+    email: payload.email || undefined,
     password: payload.password,
-    phone: payload.phone,
-    role: normalizedRole,
+    phone: payload.phone || undefined,
+    role: payload.role.toUpperCase(),
   });
-  return data;
+  return { user: data.user, token: data.accessToken, refreshToken: data.refreshToken };
 }
 
 export async function getMe(): Promise<User> {
@@ -34,9 +31,7 @@ export async function getMe(): Promise<User> {
   return data;
 }
 
-export async function updateProfile(
-  payload: Partial<User>
-): Promise<User> {
+export async function updateProfile(payload: Partial<User>): Promise<User> {
   const { data } = await api.patch("/users/me", payload);
   return data;
 }

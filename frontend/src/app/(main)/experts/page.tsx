@@ -88,8 +88,8 @@ export default function ExpertsPage() {
       specialization === "ទាំងអស់" ||
       e.specialization.includes(specialization);
     const matchSearch = e.user.name
-      .toLowerCase()
-      .includes(search.toLowerCase());
+      ?.toLowerCase()
+      .includes(search.toLowerCase()) ?? false;
     return matchSpec && matchSearch;
   });
 

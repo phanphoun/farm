@@ -65,12 +65,12 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    const user = await this.prisma.user.create({
+    const user = (await this.prisma.user.create({
       data: {
         email: normalizedEmail,
         phone: normalizedPhone,
         passwordHash,
-        displayName: dto.displayName,
+        displayName: dto.displayName ?? '',
         status: 'PENDING_VERIFICATION',
         roles: {
           create: {
@@ -82,7 +82,7 @@ export class AuthService {
         },
       },
       include: userInclude,
-    });
+    })) as UserWithRoles;
 
     return this.issueTokenPair(user, userAgent, ipAddress);
   }
@@ -266,7 +266,8 @@ export class AuthService {
   private safeRegistrationRole(role?: RoleName) {
     if (!role) return RoleName.FARMER;
     const raw = (role as any).name ?? role;
-    if (!['ADMIN', 'GOV', 'SUPER_ADMIN', 'TEACHER'].includes(raw)) {
+    // Only block truly privileged roles from self-registration
+    if (['ADMIN', 'SUPER_ADMIN'].includes(raw)) {
       return RoleName.FARMER;
     }
     return role;

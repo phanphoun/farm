@@ -13,9 +13,11 @@ RUN npm run build
 FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=deps /app/node_modules ./node_modules
+# Copy deps + generated prisma client (it lives inside node_modules/.prisma)
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 EXPOSE 4000
-CMD ["node", "dist/main.js"]
+# Run migrations then start
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]

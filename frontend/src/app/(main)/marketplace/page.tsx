@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, SlidersHorizontal, MapPin } from "lucide-react";
+import { Search, SlidersHorizontal, MapPin, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +51,16 @@ export default function MarketplacePage() {
 
   return (
     <div className="px-4 pb-4">
-      <h1 className="mb-4 text-xl font-bold">ទីផ្សារ</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-bold">ទីផ្សារ</h1>
+        <a
+          href="/marketplace/sell"
+          className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+        >
+          <Plus className="h-4 w-4" />
+          ដាក់លក់
+        </a>
+      </div>
 
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />

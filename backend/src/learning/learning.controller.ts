@@ -17,8 +17,13 @@ export class LearningController {
   constructor(private readonly learningService: LearningService) {}
 
   @Get('courses')
-  list(@Query('q') q?: string, @Query('take') take = 20, @Query('skip') skip = 0) {
-    return this.learningService.listCourses({ q, take: Number(take), skip: Number(skip) });
+  list(
+    @Query('q') q?: string,
+    @Query('category') category?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 20
+  ) {
+    return this.learningService.listCourses({ q, category, page: Number(page), limit: Number(limit) });
   }
 
   @Post('courses')

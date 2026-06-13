@@ -1,23 +1,38 @@
 "use client";
 
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useCallback } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { PostCard } from "@/components/feed/PostCard";
 import { PostCreator } from "@/components/feed/PostCreator";
-import { getFeed, getComments, createPost as createPostApi, likePost } from "@/services/social";
+import { getFeed, createPost as createPostApi } from "@/services/social";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import api from "@/services/api";
 import toast from "react-hot-toast";
+
+async function uploadFile(file: File): Promise<{ url: string; type: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const folder = file.type.startsWith("video/") ? "posts-video" : "posts";
+  const { data } = await api.post(`/media/upload?folder=${folder}`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return { url: data.url, type: data.type ?? "image" };
+}
 
 export default function FeedPage() {
   const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["feed"],
       queryFn: ({ pageParam }) => getFeed(pageParam as number),
       initialPageParam: 1,
       getNextPageParam: (lastPage) =>
-        lastPage.page < lastPage.total ? lastPage.page + 1 : undefined,
+        lastPage.page < Math.ceil(lastPage.total / 10)
+          ? lastPage.page + 1
+          : undefined,
     });
 
   const { lastElementRef } = useInfiniteScroll({
@@ -30,62 +45,78 @@ export default function FeedPage() {
 
   const handleCreatePost = useCallback(
     async (content: string, files?: File[]) => {
+      setIsSubmitting(true);
       try {
-        const payload = files?.length
-          ? new FormData()
-          : { content };
+        // 1. Upload files first, collect media objects
+        const media: { url: string; type: string }[] = [];
         if (files?.length) {
-          const formData = new FormData();
-          formData.append("content", content);
-          for (const file of files) {
-            formData.append("files", file);
-          }
-          await createPostApi(formData);
-        } else {
-          await createPostApi({ content });
+          await Promise.all(
+            files.map(async (file) => {
+              const result = await uploadFile(file);
+              media.push(result);
+            })
+          );
         }
-        toast.success("បានបង្ហោះជោគជ័យ!");
+
+        // 2. Create post with JSON payload
+        await createPostApi({ content: content || "", media });
+        toast.success("អត្ថបទត្រូវបានបង្ហោះដោយជោគជ័យ!");
         queryClient.invalidateQueries({ queryKey: ["feed"] });
       } catch {
-        toast.error("បរាជ័យក្នុងការបង្ហោះ");
+        toast.error("មិនអាចបង្ហោះអត្ថបទបាន");
+      } finally {
+        setIsSubmitting(false);
       }
     },
     [queryClient]
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!posts.length) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-        <p>មិនមានប្រកាសនៅឡើយទេ</p>
-      </div>
-    );
-  }
+  const handleDeleted = useCallback(
+    (id: string) => {
+      queryClient.setQueryData(["feed"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            data: page.data.filter((post: any) => post.id !== id),
+          })),
+        };
+      });
+    },
+    [queryClient]
+  );
 
   return (
-    <div className="space-y-4 px-4 pb-4">
-      <PostCreator onSubmit={handleCreatePost} />
+    <div className="space-y-3 px-4 pb-24 pt-2">
+      <PostCreator onSubmit={handleCreatePost} isSubmitting={isSubmitting} />
 
-      {posts.map((post, index) => (
-        <div
-          key={post.id}
-          ref={index === posts.length - 1 ? lastElementRef : undefined}
-        >
-          <PostCard post={post} />
+      {isLoading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-7 w-7 animate-spin text-primary" />
         </div>
-      ))}
+      ) : posts.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-12 text-sm text-muted-foreground">
+          <p className="text-2xl">🌾</p>
+          <p>មិនទាន់មានអត្ថបទទេ។ សូមចែករំលែកដំបូង!</p>
+        </div>
+      ) : (
+        <>
+          {posts.map((post, index) => (
+            <div
+              key={post.id}
+              ref={index === posts.length - 1 ? lastElementRef : undefined}
+            >
+              <PostCard post={post} onDeleted={handleDeleted} />
+            </div>
+          ))}
 
-      {isFetchingNextPage && (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -23,9 +23,13 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        document.cookie =
-          "token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+        localStorage.removeItem("refreshToken");
+        try {
+          document.cookie =
+            "token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+        } catch {
+          // ignore
+        }
         window.location.href = "/auth/login";
       }
     }

@@ -15,8 +15,19 @@ export class ProductsController {
   constructor(private readonly marketplaceService: MarketplaceService) {}
 
   @Get()
-  list(@Query('q') q?: string, @Query('take') take = 20, @Query('skip') skip = 0) {
-    return this.marketplaceService.listProducts({ q, take: Number(take), skip: Number(skip) });
+  list(
+    @Query('q') q?: string,
+    @Query('search') search?: string,
+    @Query('category') category?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 20
+  ) {
+    return this.marketplaceService.listProducts({
+      q: q ?? search,
+      category,
+      page: Number(page),
+      limit: Number(limit)
+    });
   }
 
   @Post()
