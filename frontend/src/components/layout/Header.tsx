@@ -49,7 +49,7 @@ export function Header() {
             <Avatar className="h-8 w-8">
               <AvatarImage src={user?.avatar} />
               <AvatarFallback className="text-xs">
-                {user ? getInitials(user.name) : "?"}
+                {user ? getInitials(user.displayName) : "?"}
               </AvatarFallback>
             </Avatar>
           </Link>

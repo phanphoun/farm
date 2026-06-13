@@ -8,8 +8,7 @@ import { useCartStore } from "@/store/cartStore";
 import { formatPrice } from "@/lib/utils";
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, totalPrice, clearCart } =
-    useCartStore();
+  const { items, removeItem, updateQuantity, totalPrice } = useCartStore();
 
   if (items.length === 0) {
     return (
@@ -39,14 +38,6 @@ export default function CartPage() {
           </Link>
           <h1 className="text-lg font-bold">កន្ត្រក</h1>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive"
-          onClick={clearCart}
-        >
-          លុបទាំងអស់
-        </Button>
       </div>
 
       <div className="space-y-3">
@@ -58,16 +49,14 @@ export default function CartPage() {
                 className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted"
               >
                 <img
-                  src={item.product.images[0]}
+                  src={item.product.images?.[0] ?? "/placeholder.png"}
                   alt={item.product.name}
                   className="h-full w-full object-cover"
                 />
               </Link>
               <div className="flex flex-1 flex-col justify-between">
                 <div className="flex justify-between">
-                  <Link
-                    href={`/marketplace/product/${item.product.id}`}
-                  >
+                  <Link href={`/marketplace/product/${item.product.id}`}>
                     <h3 className="text-sm font-medium line-clamp-1">
                       {item.product.name}
                     </h3>
@@ -82,7 +71,7 @@ export default function CartPage() {
                 <p className="text-sm font-bold text-primary">
                   {formatPrice(
                     item.product.price * item.quantity,
-                    item.product.currency
+                    item.product.currency ?? "KHR"
                   )}
                 </p>
                 <div className="flex items-center gap-2">
@@ -101,9 +90,7 @@ export default function CartPage() {
                   <Button
                     variant="outline"
                     size="icon-sm"
-                    onClick={() =>
-                      updateQuantity(item.id, item.quantity + 1)
-                    }
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
                   >
                     <Plus className="h-3 w-3" />
                   </Button>

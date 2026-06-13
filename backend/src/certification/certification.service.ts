@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { randomBytes } from 'node:crypto';
 import { AuthenticatedUser } from '../common/types/authenticated-user';
 import { PrismaService } from '../prisma/prisma.service';
+import type { Prisma } from '@prisma/client';
 import { StorageService } from '../storage/storage.service';
 import { CreateCertificationApplicationDto } from './dto/create-certification-application.dto';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
@@ -26,8 +27,8 @@ export class CertificationService {
         applicantId,
         typeId: dto.typeId,
         farmId: dto.farmId,
-        formData: dto.formData ?? {},
-        documents: dto.documents ?? [],
+        formData: (dto.formData ?? {}) as Prisma.InputJsonValue,
+        documents: (dto.documents ?? []) as Prisma.InputJsonValue,
         status: dto.submit
           ? CertificationApplicationStatus.SUBMITTED
           : CertificationApplicationStatus.DRAFT,
@@ -39,7 +40,7 @@ export class CertificationService {
 
   applications(user: AuthenticatedUser) {
     const canReview = user.roles.some((role) =>
-      [RoleName.ADMIN, RoleName.GOV, RoleName.NGO, RoleName.SUPER_ADMIN].includes(role)
+      ['ADMIN', 'GOV', 'NGO', 'SUPER_ADMIN'].includes((role as any).name)
     );
     return this.prisma.certificationApplication.findMany({
       where: canReview ? {} : { applicantId: user.id },
@@ -60,7 +61,7 @@ export class CertificationService {
         applicationId,
         inspectorId: dto.inspectorId,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
-        checklist: dto.checklist ?? {}
+        checklist: (dto.checklist ?? {}) as Prisma.InputJsonValue,
       }
     });
   }

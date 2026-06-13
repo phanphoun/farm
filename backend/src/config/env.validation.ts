@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(4000),
+  PORT: z.coerce.number().int().positive().default(4001),
   API_PREFIX: z.string().default('api'),
   CORS_ORIGINS: z.string().default(''),
   DATABASE_URL: z.string().url(),

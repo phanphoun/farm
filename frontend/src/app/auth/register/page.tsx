@@ -22,7 +22,14 @@ export default function RegisterPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const registerMutation = useMutation({
-    mutationFn: () => register({ name, email, password, phone, role }),
+    mutationFn: () =>
+      register({
+        name,
+        email,
+        password,
+        phone,
+        role
+      }),
     onSuccess: (data) => {
       setAuth(data.user, data.token);
       toast.success("ចុះឈ្មោះជោគជ័យ! សូមស្វាគមន៍!");

@@ -30,7 +30,5 @@ export class CreatePostDto {
   longitude?: number;
 
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  cropTags?: string[];
+  cropTags?: unknown;
 }

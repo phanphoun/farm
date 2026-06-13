@@ -18,7 +18,14 @@ export async function register(
     role: string;
   }
 ): Promise<{ user: User; token: string }> {
-  const { data } = await api.post("/auth/register", payload);
+  const normalizedRole = String(payload.role || "").trim().toUpperCase();
+  const { data } = await api.post("/auth/register", {
+    displayName: payload.name,
+    email: payload.email,
+    password: payload.password,
+    phone: payload.phone,
+    role: normalizedRole,
+  });
   return data;
 }
 
@@ -30,6 +37,6 @@ export async function getMe(): Promise<User> {
 export async function updateProfile(
   payload: Partial<User>
 ): Promise<User> {
-  const { data } = await api.patch("/auth/profile", payload);
+  const { data } = await api.patch("/users/me", payload);
   return data;
 }

@@ -34,7 +34,7 @@ export class FarmService {
         village: dto.village,
         address: dto.address,
         areaHectares: dto.areaHectares,
-        boundaryGeojson: dto.boundaryGeojson,
+        boundaryGeojson: dto.boundaryGeojson as any,
         members: {
           create: { userId: ownerId, role: 'OWNER' }
         }
@@ -64,7 +64,16 @@ export class FarmService {
     await this.assertFarmOwner(userId, farmId);
     const farm = await this.prisma.farm.update({
       where: { id: farmId },
-      data: dto
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.province !== undefined && { province: dto.province }),
+        ...(dto.district !== undefined && { district: dto.district }),
+        ...(dto.commune !== undefined && { commune: dto.commune }),
+        ...(dto.village !== undefined && { village: dto.village }),
+        ...(dto.address !== undefined && { address: dto.address }),
+        ...(dto.areaHectares !== undefined && { areaHectares: dto.areaHectares }),
+        boundaryGeojson: dto.boundaryGeojson as any,
+      },
     });
     await this.syncFarmGeometry(farmId, dto.boundaryGeojson);
     return farm;
@@ -78,7 +87,7 @@ export class FarmService {
         name: dto.name,
         cropHint: dto.cropHint,
         areaHectares: dto.areaHectares,
-        boundaryGeojson: dto.boundaryGeojson
+        boundaryGeojson: dto.boundaryGeojson as any
       }
     });
     await this.syncPlotGeometry(plot.id, dto.boundaryGeojson);

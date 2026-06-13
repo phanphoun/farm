@@ -39,8 +39,10 @@ export function truncate(str: string, length: number = 100): string {
   return str.substring(0, length) + "...";
 }
 
-export function getInitials(name: string): string {
-  return name
+export function getInitials(name?: string): string {
+  const text = String(name ?? "").trim();
+  if (!text) return "?";
+  return text
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -53,6 +55,7 @@ export function getRoleBadgeColor(role: string): string {
     farmer: "bg-green-100 text-green-800",
     vendor: "bg-blue-100 text-blue-800",
     expert: "bg-purple-100 text-purple-800",
+    teacher: "bg-yellow-100 text-yellow-800",
     ngo: "bg-orange-100 text-orange-800",
     admin: "bg-red-100 text-red-800",
   };
@@ -78,11 +81,20 @@ export const ROLES = [
   { value: "farmer", label: "កសិករ (Farmer)", icon: "👨‍🌾" },
   { value: "vendor", label: "អ្នកលក់ (Vendor)", icon: "🛒" },
   { value: "expert", label: "អ្នកជំនាញ (Expert)", icon: "👨‍🔬" },
+  { value: "teacher", label: "គ្រូ (Teacher)", icon: "🧑‍🏫" },
   { value: "ngo", label: "អង្គការ (NGO)", icon: "🤝" },
 ] as const;
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+export const API_BASE_URL = (() => {
+  const base =
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:4001";
+
+  const clean = base.replace(/\/+$/, "");
+
+  return clean.endsWith("/api/v1") ? clean : `${clean}/api/v1`;
+})();
 
 export const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
+  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4001";

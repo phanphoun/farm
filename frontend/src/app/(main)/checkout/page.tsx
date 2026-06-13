@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCartStore } from "@/store/cartStore";
+import { createOrder } from "@/services/orders";
 import { formatPrice } from "@/lib/utils";
 import toast from "react-hot-toast";
 
@@ -32,10 +33,16 @@ export default function CheckoutPage() {
       return;
     }
     setIsProcessing(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    clearCart();
-    toast.success("ការបញ្ជាទិញបានជោគជ័យ!");
-    router.push("/feed");
+    try {
+      await createOrder({ items, address, paymentMethod });
+      clearCart();
+      toast.success("ការបញ្ជាទិញបានជោគជ័យ!");
+      router.push("/feed");
+    } catch {
+      toast.error("បរាជ័យក្នុងការបញ្ជាទិញ");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (items.length === 0) {
@@ -128,7 +135,7 @@ export default function CheckoutPage() {
               >
                 <div className="flex items-center gap-2">
                   <img
-                    src={item.product.images[0]}
+                    src={item.product.images?.[0] ?? "/placeholder.png"}
                     alt=""
                     className="h-10 w-10 rounded-lg object-cover"
                   />
@@ -142,7 +149,7 @@ export default function CheckoutPage() {
                 <span className="text-sm font-medium">
                   {formatPrice(
                     item.product.price * item.quantity,
-                    item.product.currency
+                    item.product.currency ?? "KHR"
                   )}
                 </span>
               </div>
@@ -167,7 +174,7 @@ export default function CheckoutPage() {
           >
             {isProcessing
               ? "កំពុងដំណើរការ..."
-              : `បញ្ជាក់ការទិញ - ${formatPrice(totalPrice(), "KHR")}`}
+              : `បញ្ជាការទិញ - ${formatPrice(totalPrice(), "KHR")}`}
           </Button>
         </div>
       </div>

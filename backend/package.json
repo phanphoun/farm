@@ -6,9 +6,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main.js",
+    "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/main.js",
+    "start:prod": "node dist/src/main.js",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
@@ -41,8 +41,6 @@
     "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.56.0",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.2",
     "compression": "^1.8.0",
     "cookie-parser": "^1.4.7",
     "helmet": "^8.1.0",
@@ -69,13 +67,16 @@
     "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
     "@types/multer": "^2.0.0",
-    "@types/node": "^24.0.3",
+    "@types/node": "^20.19.43",
     "@types/passport-jwt": "^4.0.1",
     "@types/pdfkit": "^0.17.2",
     "@types/qrcode": "^1.5.5",
     "@types/supertest": "^6.0.3",
+    "@types/validator": "^13.15.10",
     "@typescript-eslint/eslint-plugin": "^8.34.1",
     "@typescript-eslint/parser": "^8.34.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
     "eslint": "^9.29.0",
     "eslint-config-prettier": "^10.1.5",
     "jest": "^30.0.0",
@@ -88,7 +89,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.7.3"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

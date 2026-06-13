@@ -2,7 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
@@ -13,14 +13,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { OtpRequestDto } from './dto/otp-request.dto';
 import { OtpVerifyDto } from './dto/otp-verify.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 
 const userInclude = {
   roles: {
     include: {
-      role: true
-    }
-  }
+      role: true,
+    },
+  },
 } satisfies Prisma.UserInclude;
 
 type UserWithRoles = Prisma.UserGetPayload<{ include: typeof userInclude }>;
@@ -42,39 +43,45 @@ export class AuthService {
     const normalizedPhone = dto.phone;
     const existing = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: normalizedEmail }, { phone: normalizedPhone }].filter((condition) =>
-          Object.values(condition).some(Boolean)
-        )
-      }
+        OR: [{ email: normalizedEmail }, { phone: normalizedPhone }].filter(
+          (condition) =>
+            Object.values(condition).some(Boolean)
+        ),
+        deletedAt: null,
+      },
     });
 
     if (existing) {
       throw new ConflictException('A user with this email or phone already exists');
     }
 
-    const roleName = this.safeRegistrationRole(dto.role);
-    const role = await this.prisma.role.findUnique({ where: { name: roleName } });
+    const rawRole = (dto.role ?? RoleName.FARMER) as RoleName;
+    const roleName = this.safeRegistrationRole(rawRole);
+    const role = await this.prisma.role.findUnique({
+      where: { name: roleName.toUpperCase() as RoleName },
+    });
     if (!role) {
       throw new BadRequestException('Roles have not been seeded yet');
     }
 
+    const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = await this.prisma.user.create({
       data: {
         email: normalizedEmail,
         phone: normalizedPhone,
-        passwordHash: await bcrypt.hash(dto.password, 12),
+        passwordHash,
         displayName: dto.displayName,
         status: 'PENDING_VERIFICATION',
         roles: {
           create: {
-            roleId: role.id
-          }
+            roleId: role.id,
+          },
         },
         cart: {
-          create: {}
-        }
+          create: {},
+        },
       },
-      include: userInclude
+      include: userInclude,
     });
 
     return this.issueTokenPair(user, userAgent, ipAddress);
@@ -85,9 +92,9 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         OR: [{ email: identifier }, { phone: dto.identifier.trim() }],
-        deletedAt: null
+        deletedAt: null,
       },
-      include: userInclude
+      include: userInclude,
     });
 
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
@@ -99,7 +106,7 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() }
+      data: { lastLoginAt: new Date() },
     });
 
     return this.issueTokenPair(user, userAgent, ipAddress);
@@ -108,7 +115,10 @@ export class AuthService {
   async requestOtp(dto: OtpRequestDto) {
     const target = this.normalizeTarget(dto.target);
     const code = String(randomInt(100000, 999999));
-    const expiresAt = new Date(Date.now() + this.config.getOrThrow<number>('OTP_TTL_MINUTES') * 60_000);
+    const expiresAt = new Date(
+      Date.now() +
+        this.config.getOrThrow<number>('OTP_TTL_MINUTES') * 60_000
+    );
     const user = await this.findUserByTarget(target);
 
     await this.prisma.otpToken.create({
@@ -118,8 +128,8 @@ export class AuthService {
         channel: dto.channel,
         purpose: dto.purpose,
         codeHash: this.hashSecret(code),
-        expiresAt
-      }
+        expiresAt,
+      },
     });
 
     return {
@@ -127,7 +137,7 @@ export class AuthService {
       channel: dto.channel,
       purpose: dto.purpose,
       expiresAt,
-      devCode: this.config.get<boolean>('OTP_DEV_MODE') ? code : undefined
+      devCode: this.config.get<boolean>('OTP_DEV_MODE') ? code : undefined,
     };
   }
 
@@ -139,9 +149,9 @@ export class AuthService {
         channel: dto.channel,
         purpose: dto.purpose,
         consumedAt: null,
-        expiresAt: { gt: new Date() }
+        expiresAt: { gt: new Date() },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
 
     if (!token) {
@@ -151,17 +161,20 @@ export class AuthService {
     if (token.codeHash !== this.hashSecret(dto.code)) {
       await this.prisma.otpToken.update({
         where: { id: token.id },
-        data: { attempts: { increment: 1 } }
+        data: { attempts: { increment: 1 } },
       });
       throw new BadRequestException('OTP is expired or invalid');
     }
 
     await this.prisma.otpToken.update({
       where: { id: token.id },
-      data: { consumedAt: new Date() }
+      data: { consumedAt: new Date() },
     });
 
-    if (dto.purpose === OtpPurpose.VERIFY_EMAIL || dto.purpose === OtpPurpose.VERIFY_PHONE) {
+    if (
+      dto.purpose === OtpPurpose.VERIFY_EMAIL ||
+      dto.purpose === OtpPurpose.VERIFY_PHONE
+    ) {
       await this.markTargetVerified(target, dto.purpose);
     }
 
@@ -172,7 +185,7 @@ export class AuthService {
     const tokenHash = this.hashSecret(refreshToken);
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
-      include: { user: { include: userInclude } }
+      include: { user: { include: userInclude } },
     });
 
     if (!stored || stored.revokedAt || stored.expiresAt <= new Date()) {
@@ -181,7 +194,7 @@ export class AuthService {
 
     await this.prisma.refreshToken.update({
       where: { id: stored.id },
-      data: { revokedAt: new Date() }
+      data: { revokedAt: new Date() },
     });
 
     return this.issueTokenPair(stored.user, userAgent, ipAddress);
@@ -189,8 +202,11 @@ export class AuthService {
 
   async logout(refreshToken: string) {
     await this.prisma.refreshToken.updateMany({
-      where: { tokenHash: this.hashSecret(refreshToken), revokedAt: null },
-      data: { revokedAt: new Date() }
+      where: {
+        tokenHash: this.hashSecret(refreshToken),
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date() },
     });
 
     return { loggedOut: true };
@@ -199,23 +215,29 @@ export class AuthService {
   async me(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      include: userInclude
+      include: userInclude,
     });
     return this.toSafeUser(user);
   }
 
-  private async issueTokenPair(user: UserWithRoles, userAgent?: string, ipAddress?: string) {
+  private async issueTokenPair(
+    user: UserWithRoles,
+    userAgent?: string,
+    ipAddress?: string
+  ) {
     const roles = user.roles.map(({ role }) => role.name);
     const payload = {
       sub: user.id,
       email: user.email,
       phone: user.phone,
-      roles
+      roles,
     };
 
     const accessToken = await this.jwt.signAsync(payload, {
       secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-      expiresIn: this.config.get<string>('JWT_ACCESS_TTL', '15m') as JwtSignOptions['expiresIn']
+      expiresIn: this.config
+        .get<string>('JWT_ACCESS_TTL', '15m')
+        .toString() as JwtSignOptions['expiresIn'],
     });
 
     const refreshToken = randomBytes(48).toString('base64url');
@@ -227,21 +249,24 @@ export class AuthService {
         tokenHash: this.hashSecret(refreshToken),
         userAgent,
         ipAddress,
-        expiresAt: new Date(Date.now() + refreshTtlDays * 24 * 60 * 60 * 1000)
-      }
+        expiresAt: new Date(
+          Date.now() + refreshTtlDays * 24 * 60 * 60 * 1000
+        ),
+      },
     });
 
     return {
       accessToken,
       refreshToken,
       tokenType: 'Bearer',
-      user: this.toSafeUser(user)
+      user: this.toSafeUser(user),
     };
   }
 
   private safeRegistrationRole(role?: RoleName) {
     if (!role) return RoleName.FARMER;
-    if ([RoleName.ADMIN, RoleName.SUPER_ADMIN, RoleName.GOV].includes(role)) {
+    const raw = (role as any).name ?? role;
+    if (!['ADMIN', 'GOV', 'SUPER_ADMIN', 'TEACHER'].includes(raw)) {
       return RoleName.FARMER;
     }
     return role;
@@ -254,8 +279,8 @@ export class AuthService {
   private async findUserByTarget(target: string): Promise<User | null> {
     return this.prisma.user.findFirst({
       where: {
-        OR: [{ email: target }, { phone: target }]
-      }
+        OR: [{ email: target }, { phone: target }],
+      },
     });
   }
 
@@ -270,7 +295,7 @@ export class AuthService {
         purpose === OtpPurpose.VERIFY_EMAIL
           ? { email: target }
           : { phone: target },
-      data
+      data,
     });
   }
 
@@ -291,7 +316,7 @@ export class AuthService {
       locale: user.locale,
       status: user.status,
       roles: user.roles.map(({ role }) => role.name),
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
     };
   }
 }

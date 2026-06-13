@@ -61,7 +61,7 @@ export class AiService {
             userId,
             language,
             title: dto.message.slice(0, 80),
-            farmContext: dto.farmContext ?? {}
+            farmContext: (dto.farmContext ?? {}) as Prisma.InputJsonValue,
           }
         });
 

@@ -44,14 +44,14 @@ export class SocialService {
         authorId,
         groupId: dto.groupId,
         content: dto.content,
-        media: dto.media ?? [],
+        media: (dto.media ?? []) as Prisma.InputJsonValue,
         visibility: dto.visibility ?? 'PUBLIC',
         locationName: dto.locationName,
         latitude: dto.latitude,
         longitude: dto.longitude,
-        cropTags: dto.cropTags ?? []
+        cropTags: (dto.cropTags ?? []) as Prisma.InputJsonValue,
       },
-      include: this.postInclude()
+      include: this.postInclude(),
     });
 
     await this.search.indexDocument('posts', {
@@ -76,11 +76,18 @@ export class SocialService {
 
   async updatePost(userId: string, id: string, dto: UpdatePostDto) {
     await this.assertPostOwner(userId, id);
-    return this.prisma.post.update({
-      where: { id },
-      data: dto,
-      include: this.postInclude()
-    });
+    const data: Prisma.PostUncheckedUpdateInput = {
+      ...(dto.groupId !== undefined && { groupId: dto.groupId }),
+      ...(dto.content !== undefined && { content: dto.content }),
+      ...(dto.media !== undefined && { media: dto.media as Prisma.InputJsonValue }),
+      ...(dto.visibility !== undefined && { visibility: dto.visibility }),
+      ...(dto.locationName !== undefined && { locationName: dto.locationName }),
+      ...(dto.latitude !== undefined && { latitude: dto.latitude }),
+      ...(dto.longitude !== undefined && { longitude: dto.longitude }),
+      ...(dto.cropTags !== undefined && { cropTags: dto.cropTags as Prisma.InputJsonValue }),
+      ...(dto.status !== undefined && { status: dto.status }),
+    };
+    return this.prisma.post.update({ where: { id }, data, include: this.postInclude() });
   }
 
   async deletePost(userId: string, id: string) {
@@ -216,7 +223,7 @@ export class SocialService {
         senderId,
         kind: dto.kind ?? 'TEXT',
         content: dto.content,
-        media: dto.media ?? []
+        media: (dto.media ?? []) as Prisma.InputJsonValue,
       },
       include: { sender: { select: { id: true, displayName: true, avatarUrl: true } } }
     });

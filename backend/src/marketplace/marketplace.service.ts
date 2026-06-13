@@ -19,7 +19,7 @@ export class MarketplaceService {
     if (input.q) {
       const result = await this.search.search('products', input.q, {
         limit: Math.min(input.take ?? 20, 50),
-        offset: input.skip ?? 0
+        offset: input.skip ?? 0,
       });
       return result.hits;
     }
@@ -31,8 +31,8 @@ export class MarketplaceService {
       orderBy: { createdAt: 'desc' },
       include: {
         vendor: { select: { id: true, displayName: true, avatarUrl: true } },
-        category: true
-      }
+        category: true,
+      },
     });
   }
 
@@ -48,11 +48,11 @@ export class MarketplaceService {
         currency: dto.currency ?? 'KHR',
         stockQuantity: dto.stockQuantity ?? 0,
         unit: dto.unit,
-        images: dto.images ?? [],
-        tags: dto.tags ?? [],
-        status: dto.status ?? ProductStatus.ACTIVE
+        images: (dto.images ?? []) as Prisma.InputJsonValue,
+        tags: (dto.tags ?? []) as Prisma.InputJsonValue,
+        status: dto.status ?? ProductStatus.ACTIVE,
       },
-      include: { category: true }
+      include: { category: true },
     });
 
     await this.search.indexDocument('products', {
@@ -62,7 +62,7 @@ export class MarketplaceService {
       tags: product.tags,
       price: product.price,
       currency: product.currency,
-      status: product.status
+      status: product.status,
     });
 
     return product;
@@ -74,23 +74,37 @@ export class MarketplaceService {
       include: {
         vendor: { select: { id: true, displayName: true, avatarUrl: true } },
         category: true,
-        reviews: { take: 10, orderBy: { createdAt: 'desc' } }
-      }
+        reviews: { take: 10, orderBy: { createdAt: 'desc' } },
+      },
     });
     if (!product) throw new NotFoundException('Product not found');
     return product;
   }
 
   async updateProduct(vendorId: string, id: string, dto: UpdateProductDto) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
-    if (!product) throw new NotFoundException('Product not found');
-    if (product.vendorId !== vendorId) throw new ForbiddenException('Only the vendor can update product');
+    const existing = await this.prisma.product.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Product not found');
+    if (existing.vendorId !== vendorId)
+      throw new ForbiddenException('Only the vendor can update product');
 
-    return this.prisma.product.update({
-      where: { id },
-      data: dto,
-      include: { category: true }
+    const product = await this.prisma.product.update({
+      where: { id, vendorId },
+      data: {
+        ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.price !== undefined && { price: dto.price }),
+        ...(dto.currency !== undefined && { currency: dto.currency }),
+        ...(dto.stockQuantity !== undefined && { stockQuantity: dto.stockQuantity }),
+        ...(dto.unit !== undefined && { unit: dto.unit }),
+        ...(dto.images !== undefined && { images: dto.images as Prisma.InputJsonValue }),
+        ...(dto.tags !== undefined && { tags: dto.tags as Prisma.InputJsonValue }),
+        ...(dto.status !== undefined && { status: dto.status }),
+      },
+      include: { category: true },
     });
+
+    return product;
   }
 
   async getCart(userId: string) {
@@ -101,18 +115,18 @@ export class MarketplaceService {
       include: {
         items: {
           include: {
-            product: true
-          }
-        }
-      }
+            product: true,
+          },
+        },
+      },
     });
 
     return {
       ...cart,
       totalAmount: cart.items.reduce(
         (sum, item) => sum.add(item.product.price.mul(item.quantity)),
-        new Prisma.Decimal(0)
-      )
+        new Prisma.Decimal(0),
+      ),
     };
   }
 
@@ -120,28 +134,28 @@ export class MarketplaceService {
     const cart = await this.prisma.cart.upsert({
       where: { userId },
       update: {},
-      create: { userId }
+      create: { userId },
     });
 
     return this.prisma.cartItem.upsert({
       where: { cartId_productId: { cartId: cart.id, productId: dto.productId } },
       update: { quantity: { increment: dto.quantity } },
       create: { cartId: cart.id, productId: dto.productId, quantity: dto.quantity },
-      include: { product: true }
+      include: { product: true },
     });
   }
 
   async createOrderFromCart(userId: string, dto: CreateOrderDto) {
     const cart = await this.prisma.cart.findUnique({
       where: { userId },
-      include: { items: { include: { product: true } } }
+      include: { items: { include: { product: true } } },
     });
 
     if (!cart?.items.length) throw new BadRequestException('Cart is empty');
 
     const subtotal = cart.items.reduce(
       (sum, item) => sum.add(item.product.price.mul(item.quantity)),
-      new Prisma.Decimal(0)
+      new Prisma.Decimal(0),
     );
 
     return this.prisma.$transaction(async (tx) => {
@@ -151,7 +165,7 @@ export class MarketplaceService {
           status: OrderStatus.CONFIRMED,
           subtotalAmount: subtotal,
           totalAmount: subtotal,
-          shippingAddress: dto.shippingAddress ?? {},
+          shippingAddress: (dto.shippingAddress ?? {}) as Prisma.InputJsonValue,
           items: {
             create: cart.items.map((item) => ({
               productId: item.productId,
@@ -162,12 +176,12 @@ export class MarketplaceService {
               snapshot: {
                 name: item.product.name,
                 unit: item.product.unit,
-                images: item.product.images
-              }
-            }))
-          }
+                images: item.product.images,
+              } as Prisma.InputJsonValue,
+            })),
+          },
         },
-        include: { items: true }
+        include: { items: true },
       });
 
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
@@ -179,21 +193,23 @@ export class MarketplaceService {
     return this.prisma.order.findMany({
       where: { buyerId: userId },
       orderBy: { createdAt: 'desc' },
-      include: { items: true, payments: true }
+      include: { items: true, payments: true },
     });
   }
 
   async getOrder(userId: string, id: string) {
     const order = await this.prisma.order.findFirst({
       where: { id, buyerId: userId },
-      include: { items: true, payments: true }
+      include: { items: true, payments: true },
     });
     if (!order) throw new NotFoundException('Order not found');
     return order;
   }
 
   async mockPayment(userId: string, orderId: string, dto: MockPaymentDto) {
-    const order = await this.prisma.order.findFirst({ where: { id: orderId, buyerId: userId } });
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, buyerId: userId },
+    });
     if (!order) throw new NotFoundException('Order not found');
 
     return this.prisma.$transaction(async (tx) => {
@@ -204,8 +220,8 @@ export class MarketplaceService {
           status: 'PAID',
           amount: order.totalAmount,
           currency: order.currency,
-          providerRef: `mock_${Date.now()}`
-        }
+          providerRef: `mock_${Date.now()}`,
+        },
       });
       await tx.order.update({ where: { id: orderId }, data: { status: 'PAID' } });
       return payment;
@@ -215,7 +231,7 @@ export class MarketplaceService {
   async vendorDashboard(vendorId: string) {
     const [products, orderItems] = await Promise.all([
       this.prisma.product.count({ where: { vendorId } }),
-      this.prisma.orderItem.findMany({ where: { vendorId }, include: { order: true } })
+      this.prisma.orderItem.findMany({ where: { vendorId }, include: { order: true } }),
     ]);
 
     const grossSales = orderItems
@@ -225,15 +241,11 @@ export class MarketplaceService {
     return {
       products,
       orderItems: orderItems.length,
-      grossSales
+      grossSales,
     };
   }
 
   private slugify(value: string) {
-    return value
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+    return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   }
 }

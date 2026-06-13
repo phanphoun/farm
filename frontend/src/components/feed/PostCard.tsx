@@ -63,14 +63,12 @@ export function PostCard({ post, onLike }: PostCardProps) {
         {post.images && post.images.length > 0 && (
           <div
             className={`mb-3 grid gap-1 overflow-hidden rounded-xl ${
-              post.images.length === 1
+              (post.images?.length ?? 0) === 1
                 ? "grid-cols-1"
-                : post.images.length === 2
-                  ? "grid-cols-2"
-                  : "grid-cols-2"
+                : "grid-cols-2"
             }`}
           >
-            {post.images.slice(0, 4).map((img, i) => (
+            {(post.images ?? []).slice(0, 4).map((img, i) => (
               <div key={i} className="relative aspect-square">
                 <img
                   src={img}
@@ -78,9 +76,9 @@ export function PostCard({ post, onLike }: PostCardProps) {
                   className="h-full w-full object-cover"
                   loading="lazy"
                 />
-                {i === 3 && post.images.length > 4 && (
+                {i === 3 && (post.images?.length ?? 0) > 4 && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-lg font-bold text-white">
-                    +{post.images.length - 4}
+                    +{(post.images?.length ?? 0) - 4}
                   </div>
                 )}
               </div>

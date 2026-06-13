@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Send,
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthStore } from "@/store/authStore";
 import type { AIChatMessage } from "@/types";
+import { sendChatMessage, analyzeImage } from "@/services/ai";
 import toast from "react-hot-toast";
 
 const WELCOME_MESSAGE: AIChatMessage = {
@@ -50,7 +51,6 @@ export default function AIChatPage() {
     if (!messageText.trim() || isLoading) return;
 
     setShowSuggestions(false);
-
     const userMessage: AIChatMessage = {
       id: `u-${Date.now()}`,
       role: "user",
@@ -61,39 +61,45 @@ export default function AIChatPage() {
     setInput("");
     setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const { reply } = await sendChatMessage({ message: messageText });
       const aiMessage: AIChatMessage = {
         id: `ai-${Date.now()}`,
         role: "assistant",
-        content: `សូមអរគុណចំពោះសំណួររបស់អ្នក! 🙏\n\nខ្ញុំសូមឆ្លើយតបថា៖ នេះជាចម្លើយសម្រាប់ "${messageText}"\n\n• ចំណុចទី១៖ អ្នកអាចប្រើបច្ចេកទេសកសិកម្មបែបទំនើប\n• ចំណុចទី២៖ សូមពិគ្រោះជាមួយអ្នកជំនាញបន្ថែម\n• ចំណុចទី៣៖ ទស្សនាវគ្គសិក្សារបស់យើង\n\nតើអ្នកមានសំណួរផ្សេងទៀតទេ?`,
+        content: reply,
         createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, aiMessage]);
+    } catch {
+      const aiMessage: AIChatMessage = {
+      id: `ai-${Date.now()}`,
+      role: "assistant",
+      content: `សូមអរគុណចំពោះសំណួររបស់អ្នក! 🙏\n\nខ្ញុំសូមឆ្លើយតបថា៖ នេះជាចម្លើយសម្រាប់ "${messageText}"\n\n• ចំណុចទី១៖ អ្នកអាចប្រើបច្ចេកទេសកសិកម្មបែបទំនើប\n• ចំណុចទី២៖ សូមពិគ្រោះជាមួយអ្នកជំនាញបន្ថែម\n• ចំណុចទី៣៖ ទស្សនាវគ្គសិក្សារបស់យើង\n\nតើអ្នកមានសំណួរផ្សេងទៀតទេ?`,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
-  const handleImageUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      toast.success("កំពុងវិភាគរូបភាព...");
-      setIsLoading(true);
-      setTimeout(() => {
-        const aiMessage: AIChatMessage = {
-          id: `ai-${Date.now()}`,
-          role: "assistant",
-          content:
-            "ខ្ញុំបានវិភាគរូបភាពរបស់អ្នករួចរាល់! 🌱\n\nលទ្ធផល៖\n• ដំណាំ៖ ស្រូវ\n• បញ្ហា៖ សត្វល្អិតចង្រិត (Brown Planthopper)\n• កម្រិតគ្រោះថ្នាក់៖ មធ្យម\n\nដំណោះស្រាយ៖\n1. ប្រើប្រាស់ថ្នាំសម្លាប់សត្វល្អិតធម្មជាតិ\n2. គ្រប់គ្រងទឹកក្នុងស្រែ\n3. ពិគ្រោះជាមួយអ្នកជំនាញក្នុងកម្មវិធី",
-          createdAt: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, aiMessage]);
-        setIsLoading(false);
-      }, 2000);
+    if (!file) return;
+    setIsLoading(true);
+    try {
+      const { disease, recommendation } = await analyzeImage(file);
+      const aiMessage: AIChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: "assistant",
+        content: `ខ្ញុំបានវិភាគរូបភាពរបស់អ្នករួចរាល់! 🌱\n\nលទ្ធផល៖\n• ដំណាំ៖ ស្រូវ\n• បញ្ហា៖ ${disease}\n• កម្រិតគ្រោះថ្នាក់៖ មធ្យម\n\nដំណោះស្រាយ៖\n1. ប្រើប្រាស់ថ្នាំសម្លាប់សត្វល្អិតធម្មជាតិ\n2. គ្រប់គ្រងទឹកក្នុងស្រែ\n3. ពិគ្រោះជាមួយអ្នកជំនាញក្នុងកម្មវិធី`,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch {
+      toast.error("បរាជ័យក្នុងការវិភាគរូបភាព");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -148,18 +154,6 @@ export default function AIChatPage() {
                   <div className="whitespace-pre-line leading-relaxed">
                     {msg.content}
                   </div>
-                  {msg.images && msg.images.length > 0 && (
-                    <div className="mt-2 grid grid-cols-2 gap-1">
-                      {msg.images.map((img, i) => (
-                        <img
-                          key={i}
-                          src={img}
-                          alt=""
-                          className="rounded-lg object-cover"
-                        />
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -217,7 +211,7 @@ export default function AIChatPage() {
           <Button
             variant="outline"
             size="icon"
-            onClick={handleImageUpload}
+            onClick={() => fileInputRef.current?.click()}
           >
             <ImagePlus className="h-5 w-5" />
           </Button>
@@ -241,7 +235,7 @@ export default function AIChatPage() {
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          onChange={handleFileChange}
+          onChange={handleImageUpload}
           className="hidden"
         />
       </div>

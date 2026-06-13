@@ -2,14 +2,18 @@ export type UserRole = "farmer" | "vendor" | "expert" | "ngo" | "admin";
 
 export interface User {
   id: string;
-  name: string;
+  name?: string;
+  displayName?: string;
   email: string;
   phone?: string;
   avatar?: string;
+  avatarUrl?: string;
   role: UserRole;
+  roles?: UserRole[];
   bio?: string;
   location?: string;
-  isVerified: boolean;
+  isVerified?: boolean;
+  status?: string;
   createdAt: string;
   followersCount?: number;
   followingCount?: number;
@@ -154,6 +158,8 @@ export interface FinanceRecord {
   createdAt: string;
 }
 
+export interface Transaction extends FinanceRecord {}
+
 export interface Expert {
   id: string;
   user: User;
@@ -192,7 +198,7 @@ export interface ChatMessage {
 export interface Conversation {
   id: string;
   participants: User[];
-  lastMessage?: ChatMessage;
+  lastMessage?: ChatMessage | null;
   unreadCount: number;
   updatedAt: string;
 }
@@ -239,8 +245,10 @@ export interface Group {
   description: string;
   coverImage?: string;
   membersCount: number;
+  members?: User[];
   isJoined: boolean;
   category: string;
+  createdBy?: string;
   createdAt: string;
 }
 
@@ -253,6 +261,56 @@ export interface QuizResult {
   passed: boolean;
   completedAt: string;
   answers: number[];
+}
+
+export interface Certificate {
+  id: string;
+  userId: string;
+  courseId: string;
+  certificateNumber: string;
+  issuedAt: string;
+  expiresAt?: string;
+  qrToken: string;
+  status: "valid" | "revoked" | "expired";
+}
+
+export interface CertificationApplication {
+  id: string;
+  userId: string;
+  inspectorId?: string;
+  type: string;
+  status: "submitted" | "under_review" | "inspections_scheduled" | "approved" | "rejected" | "issued";
+  documents: string[];
+  notes?: string;
+  inspectionDate?: string;
+  certificateId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Inspection {
+  id: string;
+  applicationId: string;
+  inspectorId: string;
+  date: string;
+  time: string;
+  status: "scheduled" | "completed" | "cancelled";
+  result?: "passed" | "failed";
+  notes?: string;
+}
+
+export interface Order {
+  id: string;
+  buyerId: string;
+  items: CartItem[];
+  total: number;
+  currency: string;
+  address: string;
+  phone: string;
+  paymentMethod: string;
+  status: "pending" | "paid" | "shipped" | "delivered" | "cancelled";
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PaginatedResponse<T> {

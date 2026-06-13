@@ -25,7 +25,7 @@ export class SearchService {
     }
   }
 
-  async search<T = unknown>(indexName: SearchIndex, query: string, options?: Record<string, unknown>) {
+  async search<T extends Record<string, any> = Record<string, any>>(indexName: SearchIndex, query: string, options?: Record<string, unknown>) {
     return this.client.index(indexName).search<T>(query, options);
   }
 }

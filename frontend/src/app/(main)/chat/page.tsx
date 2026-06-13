@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Search, MoreHorizontal, Phone, Video } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/utils";
 import type { Conversation } from "@/types";
 
@@ -63,7 +64,7 @@ export default function ChatPage() {
   const [activeChat, setActiveChat] = useState<string | null>(null);
 
   const filtered = MOCK_CONVERSATIONS.filter((c) =>
-    c.participants[0].name.toLowerCase().includes(search.toLowerCase())
+    c.participants[0]?.name?.toLowerCase().includes(search.toLowerCase())
   );
 
   if (activeChat) {

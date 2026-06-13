@@ -1,4 +1,4 @@
-import { IsArray, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, MinLength } from 'class-validator';
 
 export class AiIngestDto {
   @IsString()
@@ -13,13 +13,9 @@ export class AiIngestDto {
   language?: string;
 
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
   cropTags?: string[];
 
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
   provinceTags?: string[];
 
   @IsString()

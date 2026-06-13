@@ -11,6 +11,10 @@ interface AuthStore {
   logout: () => void;
 }
 
+function normalizeUser(u: User): User {
+  return { ...u, name: u.name || u.displayName || "" };
+}
+
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
@@ -19,11 +23,26 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       setAuth: (user, token) => {
         localStorage.setItem("token", token);
-        set({ user, token, isAuthenticated: true });
+        try {
+          if (typeof document !== "undefined") {
+            document.cookie = `token=${encodeURIComponent(token)}; path=/; SameSite=Lax`;
+          }
+        } catch {
+          // ignore cookie write failures
+        }
+        set({ user: normalizeUser(user), token, isAuthenticated: true });
       },
-      setUser: (user) => set({ user }),
+      setUser: (user) => set({ user: normalizeUser(user) }),
       logout: () => {
         localStorage.removeItem("token");
+        try {
+          if (typeof document !== "undefined") {
+            document.cookie =
+              "token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+          }
+        } catch {
+          // ignore cookie write failures
+        }
         set({ user: null, token: null, isAuthenticated: false });
       },
     }),
