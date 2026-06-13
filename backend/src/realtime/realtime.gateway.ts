@@ -53,9 +53,18 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       const pubClient = new Redis({
         host,
         port: this.config.get<number>('REDIS_PORT', 6379),
-        password: this.config.get<string>('REDIS_PASSWORD') || undefined
+        password: this.config.get<string>('REDIS_PASSWORD') || undefined,
+        lazyConnect: true,
+        enableOfflineQueue: false,
+        retryStrategy: () => null
       });
       const subClient = pubClient.duplicate();
+
+      const onErr = (err: NodeJS.ErrnoException) =>
+        this.logger.warn(`Redis unavailable (${err.code ?? err.message}) — Socket.io running without Redis adapter`);
+      pubClient.on('error', onErr);
+      subClient.on('error', onErr);
+
       await Promise.all([pubClient.connect(), subClient.connect()]);
       server.adapter(createAdapter(pubClient, subClient));
       this.logger.log('Socket.io Redis adapter enabled');
@@ -132,13 +141,13 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     this.server.to(room).emit(event, payload);
   }
 
-  private extractToken(client: Socket) {
-    const authToken = client.handshake.auth?.token;
-    if (typeof authToken === 'string') return authToken.replace(/^Bearer\s+/i, '');
+  private extractToken(client: AuthenticatedSocket): string | undefined {
+    const auth = client.handshake?.auth?.token ?? client.handshake?.headers?.authorization;
+    if (!auth) return undefined;
+    return String(auth).replace(/^Bearer\s+/i, '');
+  }
 
-    const header = client.handshake.headers.authorization;
-    if (typeof header === 'string') return header.replace(/^Bearer\s+/i, '');
-
-    return undefined;
+  private getUserRoom(userId: string) {
+    return `user:${userId}`;
   }
 }

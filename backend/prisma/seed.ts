@@ -30,85 +30,72 @@ const permissions = [
 
 const rolePermissions: Record<RoleName, string[]> = {
   FARMER: [
-    'users:read',
-    'users:update-own',
-    'social:post',
-    'marketplace:buy',
-    'learning:enroll',
-    'farm:manage-own',
-    'farm:view-shared',
-    'ai:chat',
-    'consultation:book',
-    'certification:apply',
-    'notifications:manage-own'
+    'users:read', 'users:update-own', 'social:post', 'marketplace:buy',
+    'learning:enroll', 'farm:manage-own', 'farm:view-shared', 'ai:chat',
+    'consultation:book', 'certification:apply', 'notifications:manage-own'
   ],
   VENDOR: [
-    'users:read',
-    'users:update-own',
-    'social:post',
-    'marketplace:sell',
-    'marketplace:manage-vendor',
-    'learning:enroll',
-    'notifications:manage-own'
+    'users:read', 'users:update-own', 'social:post', 'marketplace:sell',
+    'marketplace:manage-vendor', 'learning:enroll', 'notifications:manage-own'
   ],
   EXPERT: [
-    'users:read',
-    'users:update-own',
-    'social:post',
-    'learning:teach',
-    'farm:view-shared',
-    'ai:chat',
-    'consultation:provide',
-    'certification:inspect',
-    'notifications:manage-own'
+    'users:read', 'users:update-own', 'social:post', 'learning:teach',
+    'farm:view-shared', 'ai:chat', 'consultation:provide',
+    'certification:inspect', 'notifications:manage-own'
   ],
   NGO: [
-    'users:read',
-    'users:update-own',
-    'social:post',
-    'learning:teach',
-    'farm:view-shared',
-    'ai:chat',
-    'consultation:book',
-    'certification:apply',
-    'certification:inspect',
-    'notifications:manage-own'
+    'users:read', 'users:update-own', 'social:post', 'learning:teach',
+    'farm:view-shared', 'ai:chat', 'consultation:book',
+    'certification:apply', 'certification:inspect', 'notifications:manage-own'
   ],
-  GOV: ['users:read', 'farm:view-shared', 'certification:inspect', 'certification:issue'],
+  TEACHER: [],
   ADMIN: permissions,
+  GOV: ['users:read', 'farm:view-shared', 'certification:inspect', 'certification:issue'],
   SUPER_ADMIN: permissions
 };
 
 const crops = [
-  ['rice', 'Rice', 'ស្រូវ'],
-  ['cassava', 'Cassava', 'ដំឡូងមី'],
-  ['mango', 'Mango', 'ស្វាយ'],
-  ['pepper', 'Pepper', 'ម្រេច'],
-  ['cashew', 'Cashew', 'ស្វាយចន្ទី'],
-  ['banana', 'Banana', 'ចេក'],
-  ['yardlong-bean', 'Yardlong Bean', 'សណ្ដែកកួរ']
+  ['rice',         'Rice',          'ស្រូវ'],
+  ['cassava',      'Cassava',       'ដំឡូងមី'],
+  ['mango',        'Mango',         'ស្វាយ'],
+  ['pepper',       'Pepper',        'ម្រេច'],
+  ['cashew',       'Cashew',        'ស្វាយចន្ទី'],
+  ['banana',       'Banana',        'ចេក'],
+  ['yardlong-bean','Yardlong Bean', 'សណ្ដែកកួរ']
 ] as const;
 
 const productCategories = [
-  ['seeds', 'Seeds'],
-  ['fertilizer', 'Fertilizer'],
-  ['crop-protection', 'Crop Protection'],
-  ['equipment', 'Equipment'],
-  ['irrigation', 'Irrigation'],
-  ['services', 'Services']
+  ['seeds',            'Seeds'],
+  ['fertilizer',       'Fertilizer'],
+  ['crop-protection',  'Crop Protection'],
+  ['equipment',        'Equipment'],
+  ['irrigation',       'Irrigation'],
+  ['services',         'Services']
 ] as const;
 
 const certificationTypes = [
-  ['organic', 'Organic'],
-  ['gap', 'Good Agricultural Practices'],
+  ['organic',    'Organic'],
+  ['gap',        'Good Agricultural Practices'],
   ['fair-trade', 'Fair Trade'],
-  ['carbon', 'Carbon Farming'],
-  ['eudr', 'EUDR Traceability']
+  ['carbon',     'Carbon Farming'],
+  ['eudr',       'EUDR Traceability']
 ] as const;
 
-async function main() {
-  const createdPermissions = new Map<string, string>();
+// One seed user per role — all share password: 123
+const seedUsers: { email: string; displayName: string; role: RoleName }[] = [
+  { email: 'superadmin@example.com', displayName: 'Super Admin',  role: RoleName.SUPER_ADMIN },
+  { email: 'admin@example.com',      displayName: 'Admin',        role: RoleName.ADMIN       },
+  { email: 'farmer@example.com',     displayName: 'Demo Farmer',  role: RoleName.FARMER      },
+  { email: 'vendor@example.com',     displayName: 'Demo Vendor',  role: RoleName.VENDOR      },
+  { email: 'expert@example.com',     displayName: 'Demo Expert',  role: RoleName.EXPERT      },
+  { email: 'teacher@example.com',    displayName: 'Demo Teacher', role: RoleName.TEACHER     },
+  { email: 'ngo@example.com',        displayName: 'Demo NGO',     role: RoleName.NGO         },
+  { email: 'gov@example.com',        displayName: 'Demo Gov',     role: RoleName.GOV         }
+];
 
+async function main() {
+  // ── Permissions ─────────────────────────────────────────────────────────────
+  const createdPermissions = new Map<string, string>();
   for (const key of permissions) {
     const permission = await prisma.permission.upsert({
       where: { key },
@@ -118,6 +105,7 @@ async function main() {
     createdPermissions.set(key, permission.id);
   }
 
+  // ── Roles + role-permission assignments ────────────────────────────────────
   for (const roleName of Object.values(RoleName)) {
     const role = await prisma.role.upsert({
       where: { name: roleName },
@@ -136,6 +124,7 @@ async function main() {
     }
   }
 
+  // ── Reference data ──────────────────────────────────────────────────────────
   for (const [slug, name, localName] of crops) {
     await prisma.crop.upsert({
       where: { slug },
@@ -165,28 +154,38 @@ async function main() {
     });
   }
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@farmjumnoy.local';
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe123!';
-  const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: RoleName.SUPER_ADMIN } });
+  // ── Seed users ──────────────────────────────────────────────────────────────
+  const defaultPassword = await bcrypt.hash('123', 12);
 
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: { status: 'ACTIVE', emailVerifiedAt: new Date() },
-    create: {
-      email: adminEmail,
-      passwordHash: await bcrypt.hash(adminPassword, 12),
-      displayName: 'FarmJumnoy Admin',
-      locale: 'km-KH',
-      status: 'ACTIVE',
-      emailVerifiedAt: new Date()
-    }
-  });
+  for (const { email, displayName, role } of seedUsers) {
+    const dbRole = await prisma.role.findUniqueOrThrow({ where: { name: role } });
 
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: admin.id, roleId: adminRole.id } },
-    update: {},
-    create: { userId: admin.id, roleId: adminRole.id }
-  });
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { status: 'ACTIVE', emailVerifiedAt: new Date() },
+      create: {
+        email,
+        passwordHash: defaultPassword,
+        displayName,
+        locale: 'km-KH',
+        status: 'ACTIVE',
+        emailVerifiedAt: new Date()
+      }
+    });
+
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: user.id, roleId: dbRole.id } },
+      update: {},
+      create: { userId: user.id, roleId: dbRole.id }
+    });
+  }
+
+  console.log('\nSeed complete — users (password for all: 123)');
+  console.log('─────────────────────────────────────────────────');
+  for (const { email, role } of seedUsers) {
+    console.log(`  ${role.padEnd(12)}  ${email}`);
+  }
+  console.log('─────────────────────────────────────────────────\n');
 }
 
 main()

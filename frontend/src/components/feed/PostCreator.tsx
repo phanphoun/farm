@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Image, Video, X } from "lucide-react";
+import { ImageIcon, Video, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,10 +19,6 @@ export function PostCreator({ onSubmit, isSubmitting }: PostCreatorProps) {
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const user = useAuthStore((s) => s.user);
-
-  const handleFileSelect = (type: "image" | "video") => {
-    fileInputRef.current?.click();
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -93,14 +89,16 @@ export function PostCreator({ onSubmit, isSubmitting }: PostCreatorProps) {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => handleFileSelect("image")}
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  <Image className="h-5 w-5 text-green-600" />
+                  <ImageIcon className="h-5 w-5 text-green-600" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => handleFileSelect("video")}
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   <Video className="h-5 w-5 text-blue-600" />
                 </Button>

@@ -5,14 +5,21 @@ import type { User } from "@/types";
 interface AuthStore {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
-  setAuth: (user: User, token: string) => void;
+  setAuth: (user: User, token: string, refreshToken?: string) => void;
   setUser: (user: User) => void;
   logout: () => void;
 }
 
 function normalizeUser(u: User): User {
-  return { ...u, name: u.name || u.displayName || "" };
+  const roles = (u as unknown as { roles?: string[] }).roles;
+  return {
+    ...u,
+    name: u.name || (u as unknown as { displayName?: string }).displayName || "",
+    avatar: u.avatar || (u as unknown as { avatarUrl?: string }).avatarUrl,
+    role: u.role || (roles?.[0] as User["role"]) || "FARMER",
+  };
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -20,30 +27,32 @@ export const useAuthStore = create<AuthStore>()(
     (set) => ({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
-      setAuth: (user, token) => {
+      setAuth: (user, token, refreshToken) => {
         localStorage.setItem("token", token);
+        if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
         try {
           if (typeof document !== "undefined") {
             document.cookie = `token=${encodeURIComponent(token)}; path=/; SameSite=Lax`;
           }
         } catch {
-          // ignore cookie write failures
+          // ignore
         }
-        set({ user: normalizeUser(user), token, isAuthenticated: true });
+        set({ user: normalizeUser(user), token, refreshToken: refreshToken ?? null, isAuthenticated: true });
       },
       setUser: (user) => set({ user: normalizeUser(user) }),
       logout: () => {
         localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
         try {
           if (typeof document !== "undefined") {
-            document.cookie =
-              "token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+            document.cookie = "token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
           }
         } catch {
-          // ignore cookie write failures
+          // ignore
         }
-        set({ user: null, token: null, isAuthenticated: false });
+        set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
       },
     }),
     { name: "farmjumnoy-auth" }

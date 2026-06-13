@@ -6,9 +6,10 @@ export class CreatePostDto {
   @IsString()
   groupId?: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(5000)
-  content!: string;
+  content?: string;
 
   @IsOptional()
   media?: unknown[];

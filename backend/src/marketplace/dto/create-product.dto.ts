@@ -1,5 +1,5 @@
 import { ProductStatus } from '@prisma/client';
-import { IsArray, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateProductDto {
   @IsOptional()
@@ -22,13 +22,17 @@ export class CreateProductDto {
   currency?: string;
 
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(0)
   stockQuantity?: number;
 
-  @IsOptional()
   @IsString()
-  unit?: string;
+  unit!: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  minOrderQty?: number;
 
   @IsOptional()
   images?: unknown[];

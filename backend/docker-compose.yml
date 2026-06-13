@@ -78,7 +78,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://farmjumnoy:farmjumnoy@postgres:5432/farmjumnoy?schema=public
+      DATABASE_URL: postgresql://postgres:123@postgres:5432/farmjumnoy?schema=public
       REDIS_HOST: redis
       MEILI_HOST: http://meilisearch:7700
       QDRANT_URL: http://qdrant:6333

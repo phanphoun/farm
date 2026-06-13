@@ -32,7 +32,7 @@ import { StorageModule } from './storage/storage.module';
       }
     ]),
     PrismaModule,
-    QueueModule,
+    QueueModule.forRootAsync(),
     SearchModule,
     StorageModule,
     HealthModule,
@@ -55,3 +55,4 @@ import { StorageModule } from './storage/storage.module';
   ]
 })
 export class AppModule {}
+

@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ChatRoomType, ContentStatus, GroupMemberRole, Prisma } from '@prisma/client';
+import { ChatRoomType, ContentStatus, GroupMemberRole, PostVisibility, Prisma } from '@prisma/client';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { SearchService } from '../search/search.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,23 +19,31 @@ export class SocialService {
     private readonly search: SearchService
   ) {}
 
-  async feed(userId: string, take = 20, skip = 0) {
+  async feed(userId: string, page = 1, limit = 10) {
+    const take = Math.min(limit, 50);
+    const skip = (Math.max(page, 1) - 1) * take;
+
     const following = await this.prisma.follow.findMany({
       where: { followerId: userId },
       select: { followingId: true }
     });
     const followingIds = following.map((item) => item.followingId);
 
-    return this.prisma.post.findMany({
-      where: {
-        status: ContentStatus.PUBLISHED,
-        OR: [{ visibility: 'PUBLIC' }, { authorId: { in: followingIds } }, { authorId: userId }]
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: Math.min(take, 50),
-      include: this.postInclude()
-    });
+    const where: Prisma.PostWhereInput = {
+      status: ContentStatus.PUBLISHED,
+      OR: [
+        { visibility: PostVisibility.PUBLIC },
+        { authorId: { in: followingIds } },
+        { authorId: userId }
+      ]
+    };
+
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take, include: this.postInclude() }),
+      this.prisma.post.count({ where })
+    ]);
+
+    return { data: posts.map((p) => this.mapPost(p, userId)), total, page };
   }
 
   async createPost(authorId: string, dto: CreatePostDto) {
@@ -43,7 +51,7 @@ export class SocialService {
       data: {
         authorId,
         groupId: dto.groupId,
-        content: dto.content,
+        content: dto.content ?? '',
         media: (dto.media ?? []) as Prisma.InputJsonValue,
         visibility: dto.visibility ?? 'PUBLIC',
         locationName: dto.locationName,
@@ -62,7 +70,7 @@ export class SocialService {
       createdAt: post.createdAt
     });
     this.realtime.emitToRoom('feed:public', 'feed.updated', { postId: post.id });
-    return post;
+    return this.mapPost(post, authorId);
   }
 
   async getPost(id: string) {
@@ -71,7 +79,7 @@ export class SocialService {
       include: this.postInclude()
     });
     if (!post) throw new NotFoundException('Post not found');
-    return post;
+    return this.mapPost(post);
   }
 
   async updatePost(userId: string, id: string, dto: UpdatePostDto) {
@@ -222,7 +230,7 @@ export class SocialService {
         roomId,
         senderId,
         kind: dto.kind ?? 'TEXT',
-        content: dto.content,
+        content: dto.content ?? '',
         media: (dto.media ?? []) as Prisma.InputJsonValue,
       },
       include: { sender: { select: { id: true, displayName: true, avatarUrl: true } } }
@@ -242,8 +250,49 @@ export class SocialService {
     return {
       author: { select: { id: true, displayName: true, avatarUrl: true, province: true } },
       group: { select: { id: true, name: true, slug: true } },
+      reactions: { select: { userId: true } },
       _count: { select: { comments: true, reactions: true } }
     } satisfies Prisma.PostInclude;
+  }
+
+
+  async toggleLike(userId: string, postId: string) {
+    const existing = await this.prisma.reaction.findFirst({
+      where: { userId, postId },
+    });
+    if (existing) {
+      await this.prisma.reaction.delete({ where: { id: existing.id } });
+    } else {
+      await this.prisma.reaction.create({ data: { userId, postId, type: 'LIKE' } });
+    }
+    const likesCount = await this.prisma.reaction.count({ where: { postId } });
+    return { isLiked: !existing, likesCount };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private mapPost(post: any, requestUserId?: string) {
+    const media: Array<{ url: string; type?: string }> = Array.isArray(post.media) ? post.media : [];
+    return {
+      id: post.id,
+      content: post.content,
+      images: media.filter((m) => !m.type || m.type === 'image').map((m) => m.url),
+      videos: media.filter((m) => m.type === 'video').map((m) => m.url),
+      author: {
+        id: post.author?.id,
+        name: post.author?.displayName ?? '',
+        avatar: post.author?.avatarUrl ?? undefined,
+        role: post.author?.role ?? 'FARMER',
+      },
+      likesCount: post._count?.reactions ?? 0,
+      commentsCount: post._count?.comments ?? 0,
+      sharesCount: 0,
+      isLiked: requestUserId
+        ? (post.reactions ?? []).some((r: { userId: string }) => r.userId === requestUserId)
+        : false,
+      isSaved: false,
+      createdAt: post.createdAt,
+      group: post.group ?? null,
+    };
   }
 
   private slugify(value: string) {

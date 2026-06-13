@@ -15,7 +15,7 @@ export class RegisterDto {
   phone?: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(6)
   password!: string;
 
   @IsString()

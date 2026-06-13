@@ -21,7 +21,7 @@ export default function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: () => loginApi(email, password),
     onSuccess: (data) => {
-      setAuth(data.user, data.token);
+      setAuth(data.user, data.token, data.refreshToken);
       toast.success("ចូលប្រព័ន្ធជោគជ័យ!");
       router.push("/feed");
     },
@@ -52,8 +52,8 @@ export default function LoginPage() {
             អ៊ីមែល / លេខទូរស័ព្ទ
           </label>
           <Input
-            type="email"
-            placeholder="បញ្ចូលអ៊ីមែលរបស់អ្នក"
+            type="text"
+            placeholder="អ៊ីមែល ឬលេខទូរស័ព្ទ"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required

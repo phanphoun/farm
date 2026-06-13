@@ -14,15 +14,11 @@ export async function getPost(id: string): Promise<Post> {
   return data;
 }
 
-export async function createPost(
-  payload: FormData | { content: string; images?: string[] }
-): Promise<Post> {
-  const { data } = await api.post("/posts", payload, {
-    headers:
-      payload instanceof FormData
-        ? { "Content-Type": "multipart/form-data" }
-        : undefined,
-  });
+export async function createPost(payload: {
+  content?: string;
+  media?: { url: string; type: string }[];
+}): Promise<Post> {
+  const { data } = await api.post("/posts", payload);
   return data;
 }
 
@@ -56,5 +52,17 @@ export async function followUser(
   userId: string
 ): Promise<{ isFollowing: boolean }> {
   const { data } = await api.post(`/users/${userId}/follow`);
+  return data;
+}
+
+export async function deletePost(postId: string): Promise<void> {
+  await api.delete(`/posts/${postId}`);
+}
+
+export async function updatePost(
+  postId: string,
+  payload: { content?: string }
+): Promise<Post> {
+  const { data } = await api.patch(`/posts/${postId}`, payload);
   return data;
 }

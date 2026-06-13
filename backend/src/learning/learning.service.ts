@@ -18,25 +18,34 @@ export class LearningService {
     private readonly storage: StorageService
   ) {}
 
-  async listCourses(input: { q?: string; take?: number; skip?: number }) {
+  async listCourses(input: { q?: string; category?: string; page?: number; limit?: number }) {
+    const take = Math.min(input.limit ?? 20, 50);
+    const page = Math.max(input.page ?? 1, 1);
+    const skip = (page - 1) * take;
+
     if (input.q) {
-      const result = await this.search.search('courses', input.q, {
-        limit: Math.min(input.take ?? 20, 50),
-        offset: input.skip ?? 0
-      });
-      return result.hits;
+      const result = await this.search.search('courses', input.q, { limit: take, offset: skip });
+      const hits = result.hits as unknown[];
+      return { data: hits, total: hits.length, page };
     }
 
-    return this.prisma.course.findMany({
-      where: { status: CourseStatus.PUBLISHED },
-      orderBy: { createdAt: 'desc' },
-      take: Math.min(input.take ?? 20, 50),
-      skip: input.skip ?? 0,
-      include: {
-        instructor: { select: { id: true, displayName: true, avatarUrl: true } },
-        _count: { select: { lessons: true, enrollments: true } }
-      }
-    });
+    const where: Prisma.CourseWhereInput = { status: CourseStatus.PUBLISHED };
+
+    const [courses, total] = await Promise.all([
+      this.prisma.course.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take,
+        skip,
+        include: {
+          instructor: { select: { id: true, displayName: true, avatarUrl: true } },
+          _count: { select: { lessons: true, enrollments: true } }
+        }
+      }),
+      this.prisma.course.count({ where })
+    ]);
+
+    return { data: courses, total, page };
   }
 
   async createCourse(instructorId: string, dto: CreateCourseDto) {
@@ -165,7 +174,7 @@ export class LearningService {
     const verifyUrl = `/api/certificates/learning/${qrToken}/verify`;
     const pdf = await this.renderCertificatePdf({
       certificateNo,
-      studentName: enrollment.user.displayName,
+      studentName: enrollment.user.displayName ?? enrollment.user.email ?? 'Student',
       courseTitle: enrollment.course.title,
       verifyUrl
     });
@@ -237,6 +246,6 @@ export class LearningService {
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+   .replace(/-+/g, `-`);
   }
 }

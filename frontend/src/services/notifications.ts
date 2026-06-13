@@ -1,9 +1,9 @@
 import api from "./api";
 import type { Notification } from "@/types";
 
-export async function getNotifications() {
+export async function getNotifications(): Promise<Notification[]> {
   const { data } = await api.get("/notifications");
-  return data as Notification[];
+  return (data.data ?? data) as Notification[];
 }
 
 export async function markNotificationRead(id: string) {
